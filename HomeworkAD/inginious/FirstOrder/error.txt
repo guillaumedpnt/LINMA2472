@@ -1,0 +1,10 @@
+ERROR: LoadError: UndefVarError: `VectReverse` not defined in `Main`
+Suggestion: check for spelling errors or missing imports.
+Stacktrace:
+ [1] include(mod::Module, _path::String)
+   @ Base .\Base.jl:306
+ [2] exec_options(opts::Base.JLOptions)
+   @ Base .\client.jl:317
+ [3] _start()
+   @ Base .\client.jl:550
+in expression starting at C:\Users\Guillaume\Documents\UCL\Master 2\Q1\LINMA2472\HomeworkAD\inginious\FirstOrder\runtests.jl:11

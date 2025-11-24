@@ -76,7 +76,8 @@ Base.:-(x::Union{AbstractArray,Number}, y::VectNode) = VectNode(x) - y
 Base.:-(x::VectNode) = VectNode(:neg, [x], -x.value)
 
 # Division
-Base.:/(x::VectNode, y::Union{AbstractArray,Number}) = x * VectNode(inv(y))
+# Base.:/(x::VectNode, y::Union{AbstractArray,Number}) = x * VectNode(inv(y))
+Base.:/(x::VectNode, y::Union{AbstractArray,Number}) = VectNode(:div, [x, VectNode(y)], x.value ./ y)
 
 # Sum reduction
 Base.sum(x::VectNode) = VectNode(:sum, [x], sum(x.value))
@@ -93,7 +94,13 @@ Base.max(x::Union{Number,AbstractArray}, y::VectNode) = VectNode(:max, [VectNode
 # We assume `Flatten` has been defined in the parent module.
 # If this fails, run `include("/path/to/Flatten.jl")` before
 # including this file.
-import ..Flatten
+# import ..Flatten
+try
+    include(joinpath(@__DIR__, "flatten.jl"))
+catch err
+    # If include fails, rethrow with a clearer message.
+    rethrow(err)
+end
 
 function topo_sort!(visited, topo, f::VectNode)
     if !(f in visited)
@@ -166,7 +173,9 @@ function _backward!(f::VectNode)
     elseif f.op == :sum
         # d/dx(sum(x)) = ones(size(x))
         # The derivative flows back to all elements
-        add_derivative!(f.args[1], f.derivative)
+        # add_derivative!(f.args[1], f.derivative)
+        add_derivative!(f.args[1], f.derivative .* ones(size(f.args[1].value)))
+
     elseif f.op == :max
         # d/dx(max(x, c)) = 1 if x > c, 0 otherwise (with subgradient at x == c)
         # For max between two nodes or node and constant
@@ -176,7 +185,9 @@ function _backward!(f::VectNode)
             add_derivative!(f.args[2], f.derivative .* mask)
         elseif !isnothing(f.args[1].op) && isnothing(f.args[2].op)
             # First arg is variable, second is constant (typical for ReLU)
-            mask = f.args[1].value .>= f.args[2].value
+            # mask = f.args[1].value .>= f.args[2].value
+            mask = f.args[1].value .>= f.args[2].value .* ones(size(f.args[1].value))
+
             add_derivative!(f.args[1], f.derivative .* mask)
         else
             # Both are variables
@@ -201,7 +212,8 @@ function backward!(f::VectNode)
     end
     
     # Seed the output gradient
-    f.derivative = one(f.value)
+    # f.derivative = one(f.value)
+    f.derivative = ones(size(f.value))
     
     # Backpropagate
     for node in topo
